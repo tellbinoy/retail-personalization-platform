@@ -1,0 +1,21 @@
+pandas==2.2.2
+numpy==1.26.4
+#scikit-learn==1.5.2
+#imbalanced-learn==0.12.4
+#pyarrow==17.0.0
+#joblib==1.4.2
+google-cloud-bigquery==3.35.1
+google-cloud-bigquery-storage==2.33.1
+#db-dtypes==1.4.3
+#xgboost==3.0.2
+#shap==0.48.0
+#matplotlib==3.10.5
+#lightgbm==4.6.0
+
+#to move this over to GCS buckets
+google-cloud-storage==3.3.1
+kfp==2.16.1
+
+#Gemini Integration
+#google-genai>=1.0.0
+google-auth>=2.35.0
