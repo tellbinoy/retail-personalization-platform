@@ -29,3 +29,8 @@ RANDOM_STATE = 42
 TEST_FOLDER_NAME = "test"
 MIN_SUPPORT = 0.02
 MIN_THRESHOLD = 0.5
+
+
+## Purchase Pattern Identification
+###############################################################
+PURCHASE_THRESHOLD = 0.8

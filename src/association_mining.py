@@ -1,7 +1,7 @@
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import fpgrowth
 
-from src.common_functions import log_lifecycle
+from src.common_functions import log_lifecycle, save_parquet
 from src.config import MIN_SUPPORT, MIN_THRESHOLD
 
 import pandas as pd
@@ -93,5 +93,5 @@ def generate_association_rules(
     )
 
     print(f"Association rules generated : {len(association_rules_df):,}")
-
+    save_parquet(association_rules_df, "association_rules")
     return association_rules_df
