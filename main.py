@@ -20,7 +20,7 @@ def main():
     #associations(transaction_baskets_df)
 
     #What products are interesting to the customer
-    #purchase_pattern_identification()
+    purchase_pattern_identification()
 
     #Which bundle recommendations are top picks
     bundle_recommendations()
