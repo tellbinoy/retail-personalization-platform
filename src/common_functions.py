@@ -428,3 +428,14 @@ def open_text_file(file_name, folder_path):
                 encoding="utf-8"
         ) as f:
             return f.read()
+
+from google.cloud import bigquery
+
+from src.config import (
+    PROJECT_ID,
+    DATASET_ID,
+    USE_BIGQUERY
+)
+
+
+

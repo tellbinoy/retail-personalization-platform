@@ -1,10 +1,14 @@
-from src.common_functions import log_lifecycle, save_parquet
+from src.common_functions import log_lifecycle, save_parquet, save_joblib, update_json_file
 import pandas as pd
 
-from src.config import PURCHASE_THRESHOLD
-from src.data_loader import load_campaign_customer_orders
+from src.config import PURCHASE_THRESHOLD, RECOMMENDATION_BUNDLE_CUTOFF, USE_BIGQUERY, CUSTOMER_PERSONA_BUCKETS
+from src.data_loader import load_campaign_customer_orders, write_to_bigquery
 
 from sklearn.preprocessing import RobustScaler
+
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import RobustScaler
+
 
 @log_lifecycle
 def identify_customer_domains(
@@ -420,4 +424,497 @@ def rank_recommendations(
 
     return ranked_recommendations_df
 
-#def filter_recommendations()
+@log_lifecycle
+def filter_recommendations(
+    ranked_recommendations_df,
+    top_n=RECOMMENDATION_BUNDLE_CUTOFF
+):
+
+    required_columns = [
+        "customer_id",
+        "triggering_department",
+        "triggering_class",
+        "triggering_sku",
+        "recommended_department",
+        "recommended_class",
+        "recommended_sku",
+        "support",
+        "confidence",
+        "lift",
+        "recommendation_score",
+        "recommendation_rank"
+    ]
+
+    missing_columns = [
+        column
+        for column in required_columns
+        if column not in ranked_recommendations_df.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            f"Missing required columns: {missing_columns}"
+        )
+
+    filtered_recommendations_df = (
+        ranked_recommendations_df.copy()
+    )
+
+    # Keep Top N recommendations per customer
+    filtered_recommendations_df = (
+        filtered_recommendations_df[
+            filtered_recommendations_df[
+                "recommendation_rank"
+            ] <= top_n
+        ]
+    )
+
+    # Remove duplicate recommendations
+    # Keep the highest ranked recommendation
+
+    filtered_recommendations_df = (
+        filtered_recommendations_df
+        .sort_values(
+            [
+                "customer_id",
+                "recommendation_rank"
+            ]
+        )
+        .drop_duplicates(
+            subset=[
+                "customer_id",
+                "recommended_sku"
+            ],
+            keep="first"
+        )
+    )
+
+
+    # Final Sort
+    filtered_recommendations_df = (
+        filtered_recommendations_df
+        .sort_values(
+            [
+                "customer_id",
+                "recommendation_rank"
+            ]
+        )
+        .reset_index(drop=True)
+    )
+
+    print(
+        f"Filtered Recommendations : "
+        f"{len(filtered_recommendations_df):,}"
+    )
+
+    filtered_recommendations_df.to_excel('filtered_recommendations.xlsx', index=False)
+    save_parquet(
+        filtered_recommendations_df,
+        "filtered_recommendations"
+    )
+
+    return filtered_recommendations_df
+
+
+@log_lifecycle
+def publish_recommendations(
+    filtered_recommendations_df
+):
+
+
+    required_columns = [
+        "customer_id",
+        "triggering_department",
+        "triggering_class",
+        "triggering_sku",
+        "recommended_department",
+        "recommended_class",
+        "recommended_sku",
+        "support",
+        "confidence",
+        "lift",
+        "recommendation_score",
+        "recommendation_rank"
+    ]
+
+    missing_columns = [
+        column
+        for column in required_columns
+        if column not in filtered_recommendations_df.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            f"Missing required columns: {missing_columns}"
+        )
+
+    recommendation_df = (
+        filtered_recommendations_df[
+            required_columns
+        ]
+        .copy()
+        .sort_values(
+            [
+                "customer_id",
+                "recommendation_rank"
+            ]
+        )
+        .reset_index(drop=True)
+    )
+
+    print(
+        f"Published Recommendations : "
+        f"{len(recommendation_df):,}"
+    )
+
+    save_parquet(
+        recommendation_df,
+        "customer_recommendations"
+    )
+
+    if USE_BIGQUERY:
+
+        write_to_bigquery(
+            recommendation_df,
+            table_name="customer_recommendations",
+            write_disposition="WRITE_TRUNCATE"
+        )
+
+    return recommendation_df
+
+
+@log_lifecycle
+def build_customer_persona_features():
+    #Build customer feature matrix for persona clustering.
+
+
+    transaction_df = load_campaign_customer_orders()
+
+
+    # Department Spend
+    customer_department = (
+        transaction_df
+        .groupby(
+            [
+                "customer_id",
+                "department"
+            ],
+            as_index=False
+        )["sales_amount"]
+        .sum()
+    )
+
+    # Customer x Department Matrix
+
+    customer_features_df = (
+        customer_department
+        .pivot(
+            index="customer_id",
+            columns="department",
+            values="sales_amount"
+        )
+        .fillna(0)
+    )
+
+    # Convert to Spend %
+
+    customer_features_df = (
+        customer_features_df
+        .div(
+            customer_features_df.sum(axis=1),
+            axis=0
+        )
+        .fillna(0)
+    )
+
+    customer_features_df = (
+        customer_features_df
+        .reset_index()
+    )
+
+    print(
+        f"Customer Persona Features : "
+        f"{len(customer_features_df):,}"
+    )
+
+    save_parquet(
+        customer_features_df,
+        "customer_persona_features"
+    )
+
+    return customer_features_df
+
+
+
+@log_lifecycle
+def cluster_customer_personas(
+    customer_features_df,
+    n_clusters=CUSTOMER_PERSONA_BUCKETS
+):
+
+    customer_persona_df = customer_features_df.copy()
+
+    # Preserve Customer IDs
+    customer_ids = customer_persona_df["customer_id"]
+    features = customer_persona_df.drop(
+        columns="customer_id"
+    )
+
+    # Scale Features
+    scaler = RobustScaler()
+    scaled_features = scaler.fit_transform(
+        features
+    )
+
+    # KMeans Clustering
+    model = KMeans(
+        n_clusters=n_clusters,
+        random_state=42,
+        n_init=20
+    )
+
+    clusters = model.fit_predict(
+        scaled_features
+    )
+
+    # Final Dataset
+    customer_persona_df = customer_ids.to_frame()
+    customer_persona_df["persona_cluster"] = (
+        clusters
+    )
+
+    print(
+        customer_persona_df["persona_cluster"]
+        .value_counts()
+        .sort_index()
+    )
+
+    save_parquet(
+        customer_persona_df,
+        "customer_personas"
+    )
+
+    save_joblib(model, 'customer_persona_kmean')
+
+    return (
+        customer_persona_df,
+        model
+    )
+
+
+
+@log_lifecycle
+def build_persona_summary(
+    customer_features_df,
+    customer_personas_df,
+    top_departments=3,
+    file_name="persona_summary.json"
+):
+    """
+    Build customer persona metadata from KMeans clusters.
+    """
+
+    persona_df = (
+        customer_features_df
+        .merge(
+            customer_personas_df,
+            on="customer_id",
+            how="inner"
+        )
+    )
+
+    department_columns = [
+        column
+        for column in persona_df.columns
+        if column not in [
+            "customer_id",
+            "persona_cluster"
+        ]
+    ]
+
+    persona_summary = []
+
+    grouped = persona_df.groupby("persona_cluster")
+
+    for cluster_id, group in grouped:
+
+        department_profile = (
+            group[department_columns]
+            .mean()
+            .sort_values(ascending=False)
+        )
+
+        dominant_departments = []
+
+        for department, value in (
+            department_profile
+            .head(top_departments)
+            .items()
+        ):
+            dominant_departments.append({
+
+                "department": department,
+
+                "average_spend_share_pct":
+                    round(
+                        value * 100,
+                        2
+                    )
+            })
+
+        persona_summary.append({
+
+            "persona_cluster":
+                int(cluster_id),
+
+            "customers":
+                int(
+                    group["customer_id"].nunique()
+                ),
+
+            "dominant_departments":
+                dominant_departments
+        })
+
+    persona_summary = sorted(
+        persona_summary,
+        key=lambda x: x["customers"],
+        reverse=True
+    )
+
+    metadata = {
+
+        "context": {
+
+            "purpose":
+                "Customer purchasing personas.",
+
+            "audience":
+                "Chief Marketing Officer",
+
+            "objective":
+                (
+                    "Summarize customer purchasing "
+                    "behaviours into interpretable personas."
+                )
+        },
+
+        "persona_summary":
+            persona_summary
+    }
+
+    update_json_file(
+        metadata,
+        file_name
+    )
+
+    return metadata
+
+
+@log_lifecycle
+def build_recommendation_evidence(
+    filtered_recommendations_df,
+    file_name="recommendation_evidence.json"
+):
+
+    #Summarises why recommendation classes were suggested by aggregating customer impact and recommendation quality.
+
+    grouped = (
+        filtered_recommendations_df
+        .groupby(
+            [
+                "recommended_department",
+                "recommended_class"
+            ]
+        )
+    )
+
+    recommendation_evidence = []
+
+    for (
+        recommended_department,
+        recommended_class
+    ), group in grouped:
+
+        recommendation_evidence.append({
+
+            "recommended_department":
+                recommended_department,
+
+            "recommended_class":
+                recommended_class,
+
+            "customers_impacted":
+                int(
+                    group["customer_id"].nunique()
+                ),
+
+            "recommendations_generated":
+                int(
+                    len(group)
+                ),
+
+            "average_confidence":
+                round(
+                    group["confidence"].mean(),
+                    4
+                ),
+
+            "average_lift":
+                round(
+                    group["lift"].mean(),
+                    4
+                ),
+
+            "top_triggering_department":
+                (
+                    group["triggering_department"]
+                    .mode()
+                    .iloc[0]
+                ),
+
+            "top_triggering_class":
+                (
+                    group["triggering_class"]
+                    .mode()
+                    .iloc[0]
+                )
+        })
+
+    recommendation_evidence = sorted(
+        recommendation_evidence,
+        key=lambda x: (
+            x["customers_impacted"],
+            x["average_lift"]
+        ),
+        reverse=True
+    )
+
+    metadata = {
+
+        "context": {
+
+            "purpose":
+                "Evidence supporting recommendation decisions.",
+
+            "audience":
+                "Chief Marketing Officer",
+
+            "objective":
+                (
+                    "Summarize the strongest purchasing "
+                    "relationships that resulted in "
+                    "recommended product classes."
+                )
+        },
+
+        "recommendation_evidence":
+            recommendation_evidence
+    }
+
+    update_json_file(
+        metadata,
+        file_name
+    )
+
+    return metadata

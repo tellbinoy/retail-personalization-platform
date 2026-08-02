@@ -8,8 +8,7 @@ ENABLE_GUARDRAILS = True
 
 ## Docker Runtime Cnfig
 PROJECT_ID = "retailmarketing-123"
-
-
+DATASET_ID = "analytics"
 
 ## BigQuery Config
 ###############################################################
@@ -34,3 +33,9 @@ MIN_THRESHOLD = 0.5
 ## Purchase Pattern Identification
 ###############################################################
 PURCHASE_THRESHOLD = 0.8
+CUSTOMER_PERSONA_BUCKETS = 6
+
+## Bundle Recommendation
+###############################################################
+RECOMMENDATION_BUNDLE_CUTOFF = 3
+

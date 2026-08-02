@@ -1,7 +1,7 @@
 from google.cloud import bigquery
 
 from src.common_functions import log_lifecycle
-from src.config import USE_BIGQUERY
+from src.config import USE_BIGQUERY, DATASET_ID
 from src.config import PROJECT_ID
 
 import pandas as pd
@@ -39,6 +39,58 @@ def load_campaign_customers():
     else:
         print("NO DATA FOUND")
 
+@log_lifecycle
+def write_to_bigquery(
+    df,
+    table_name,
+    write_disposition="WRITE_TRUNCATE"
+):
+    """
+    Write a DataFrame to BigQuery.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+
+    table_name : str
+
+    write_disposition : str
+        WRITE_TRUNCATE
+        WRITE_APPEND
+        WRITE_EMPTY
+    """
+
+    if not USE_BIGQUERY:
+        print("BigQuery publishing skipped.")
+        return
+
+    table_id = (
+        f"{PROJECT_ID}."
+        f"{DATASET_ID}."
+        f"{table_name}"
+    )
+
+    job_config = bigquery.LoadJobConfig(
+        write_disposition=write_disposition
+    )
+
+    client = get_bq_client()
+
+    job = client.load_table_from_dataframe(
+        df,
+        table_id,
+        job_config=job_config
+    )
+
+    job.result()
+
+    table = client.get_table(table_id)
+
+    print(
+        f"Loaded "
+        f"{table.num_rows:,} rows "
+        f"into {table_id}"
+    )
 
 
 
