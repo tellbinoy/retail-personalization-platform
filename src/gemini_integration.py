@@ -20,6 +20,13 @@ from src.config import (
 from src.gemini_prompts_cxo import prompt_CMO_campaign
 from src.gemini_prompts_operations import prompt_marketing_manager_campaign
 
+#build_dashboard(report_data) → KPI cards
+#build_executive_summary() → Gemini narrative
+#build_department_table() → Python-generated table
+#build_cross_department_table()
+#build_persona_table()
+#build_recommendation_evidence_table()
+#build_campaign_recommendations() → Gemini narrative
 
 # Test Gemini
 
@@ -153,71 +160,3 @@ def generate_cmo_campaign_brief(
     return summary
 
 
-
-# Marketing Campaign Playbook
-
-
-@log_lifecycle
-def generate_campaign_operations_brief(
-    context=None
-):
-
-    if context is None:
-        context = build_gemini_context()
-
-    prompt = (
-        prompt_marketing_manager_campaign
-        + str(context)
-    )
-
-    os.makedirs(
-        ARTIFACT_ROOT + "/gemini",
-        exist_ok=True
-    )
-
-    summary = call_gemini(prompt)
-
-    output_file = (
-        ARTIFACT_ROOT
-        + "/gemini/marketing_campaign_playbook.html"
-    )
-
-    with open(
-        output_file,
-        "w",
-        encoding="utf-8"
-    ) as f:
-
-        f.write(summary)
-
-    print(
-        f"Results generated in {output_file}"
-    )
-
-    if use_cloud_artifacts():
-
-        client = storage.Client()
-
-        bucket = client.bucket(
-            BUCKET_NAME
-        )
-
-        blob = bucket.blob(
-            "gemini/marketing_campaign_playbook.html"
-        )
-
-        blob.upload_from_filename(
-            output_file,
-            content_type="text/html"
-        )
-
-        print(
-            f"Uploaded to "
-            f"gs://{BUCKET_NAME}/gemini/"
-            f"marketing_campaign_playbook.html"
-        )
-
-    return summary
-
-
-# Pipeline Entry Point

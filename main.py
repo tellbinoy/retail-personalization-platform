@@ -26,7 +26,7 @@ def main():
     #purchase_pattern_identification()
 
     #Discover hidden customer personas
-    customer_persona_grouping()
+    #customer_persona_grouping()
 
     #Which bundle recommendations are top picks
     #bundle_recommendations()

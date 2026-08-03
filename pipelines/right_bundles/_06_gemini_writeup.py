@@ -1,5 +1,7 @@
 from src.common_functions import log_lifecycle
 from src.config import ARTIFACT_ROOT
+from src.report_generator_executive import generate_report
+
 
 # Bring the facts regarding customers at risk, action items to be done, how to turn things around
 #
@@ -19,9 +21,11 @@ def run(context=None):
         context = build_gemini_context()
 
     #generate_cmo_campaign_brief(context)
-    generate_campaign_operations_brief(context)
+    #generate_campaign_operations_brief(context)
+
+    #build_dashboard(context)
+    generate_report()
 
 if __name__ == "__main__":
-    from src.gemini_integration import build_gemini_context
-    run(context = build_gemini_context())
+    run()
 
