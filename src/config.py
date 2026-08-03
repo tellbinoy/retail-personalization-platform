@@ -33,7 +33,7 @@ MIN_THRESHOLD = 0.5
 ## Purchase Pattern Identification
 ###############################################################
 PURCHASE_THRESHOLD = 0.8
-CUSTOMER_PERSONA_BUCKETS = 6
+CUSTOMER_PERSONA_BUCKETS = 20
 
 ## Bundle Recommendation
 ###############################################################

@@ -6,7 +6,7 @@ from pipelines.right_bundles._03a_purchase_pattern_identification import run as 
 from pipelines.right_bundles._03b_customer_persona import run as customer_persona_grouping
 from pipelines.right_bundles._04_rank_bundle_recommendations import run as bundle_recommendations
 from pipelines.right_bundles._05_campaign_summary_maker import run as campaign_summary
-
+from pipelines.right_bundles._06_gemini_writeup import run as gemini_insights
 
 from src.common_functions import log_lifecycle, use_cloud_artifacts, print_runtime_context
 
@@ -26,7 +26,7 @@ def main():
     #purchase_pattern_identification()
 
     #Discover hidden customer personas
-    #customer_persona_grouping()
+    customer_persona_grouping()
 
     #Which bundle recommendations are top picks
     #bundle_recommendations()
@@ -35,6 +35,7 @@ def main():
     #campaign_summary()
 
     #Gemini Write up
+    gemini_insights()
 
 
 if __name__ == "__main__":
