@@ -4,7 +4,9 @@ from src.purchase_patterns import identify_customer_domains, generate_recommenda
 
 
 @log_lifecycle
-def run():
+def run( association_rules_df = None ):
+    if len(association_rules_df) == 0:
+        association_rules_df = open_parquet('association_rules')
     # Vertex AI - Inputs
     # ----------------
     # load_campaign_customer_orders()
@@ -24,12 +26,12 @@ def run():
     # ----------------
     # artifacts/data/recommendation_candidates.parquet
     customer_domain_df = open_parquet('customer_domain')
-    association_rules_df = open_parquet('association_rules')
-    generate_recommendation_candidates(
+    recommendation_candidates_df = generate_recommendation_candidates(
         customer_domain_df,
         association_rules_df
     )
 
+    return recommendation_candidates_df
     
 
 

@@ -1,21 +1,28 @@
 pandas==2.2.2
 numpy==2.0.0
-#scikit-learn==1.5.2
-#imbalanced-learn==0.12.4
-#pyarrow==17.0.0
-#joblib==1.4.2
+
+# Machine Learning
+scikit-learn==1.7.1
+mlxtend==0.23.4
+
+# BigQuery
 google-cloud-bigquery==3.35.1
 google-cloud-bigquery-storage==2.33.1
-#db-dtypes==1.4.3
-#xgboost==3.0.2
-#shap==0.48.0
-#matplotlib==3.10.5
-#lightgbm==4.6.0
+db-dtypes==1.4.3
+pyarrow==17.0.0
 
-#to move this over to GCS buckets
+# Google Cloud Storage
 google-cloud-storage==3.3.1
+
+# Vertex AI Pipelines
 kfp==2.16.1
 
-#Gemini Integration
-#google-genai>=1.0.0
-google-auth>=2.35.0
+# Gemini
+google-auth==2.40.3
+google-genai==1.31.0
+
+# Excel support
+openpyxl==3.1.5
+
+# HTTP
+requests==2.32.5

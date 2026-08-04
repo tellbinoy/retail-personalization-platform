@@ -8,10 +8,10 @@ from pathlib import Path
 import joblib
 from src.config import ARTIFACT_ROOT, BUCKET_NAME, TEST_FOLDER_NAME
 from src.gcs_utils import upload_file
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix, classification_report, roc_auc_score, roc_curve
-) #used for scoring the classification
+#from sklearn.metrics import (
+#    accuracy_score, precision_score, recall_score, f1_score,
+#    confusion_matrix, classification_report, roc_auc_score, roc_curve
+#) #used for scoring the classification
 from google.cloud import storage
 import google.auth
 from google.auth.transport.requests import Request
@@ -272,80 +272,6 @@ def open_parquet(df_name, file_path=None):
 
         return pd.read_parquet(full_file_path)
 
-@log_lifecycle
-def save_joblib(object_to_save, object_name):
-    Path(ARTIFACT_ROOT + "/models").mkdir(
-        parents=True,
-        exist_ok=True
-    )
-    full_file_path = ARTIFACT_ROOT+"/models/"+object_name+".joblib"
-    joblib.dump(
-        object_to_save,
-        full_file_path
-    )
-    upload_file(
-        local_file=full_file_path,
-        bucket_name=BUCKET_NAME,
-        blob_name="models/" + object_name + ".joblib"
-    )
-
-
-@log_lifecycle
-def open_joblib(object_name):
-
-    if use_cloud_artifacts():
-        print("Running Inside Vertex")
-        client = storage.Client()
-        bucket = client.bucket(BUCKET_NAME)
-        blob = bucket.blob(f"models/{object_name}.joblib")
-
-        # Download the joblib file into memory
-        model_bytes = blob.download_as_bytes()
-
-        # Load the model directly from memory
-        return joblib.load(io.BytesIO(model_bytes))
-
-    else:
-        full_file_path = (ARTIFACT_ROOT +"/models/" +object_name +".joblib")
-
-        if not os.path.exists(full_file_path):
-            raise FileNotFoundError(f"{full_file_path} not found")
-        return joblib.load(full_file_path)
-
-
-@log_lifecycle
-def model_checker(y_test, y_pred, y_prob, model_name, prev_test_result=None):
-    classification_metrics = {
-        'Accuracy': accuracy_score(y_test, y_pred),
-        'Precision': precision_score(y_test, y_pred),
-        'Recall': recall_score(y_test, y_pred),
-        'F1 Score': f1_score(y_test, y_pred),
-        'ROC-AUC': roc_auc_score(y_test, y_prob)
-    }
-
-    test_result = pd.DataFrame(classification_metrics, index=[model_name]).T
-
-    cm_1 = confusion_matrix(y_test, y_pred)
-
-    if prev_test_result is not None:
-        test_result = pd.concat([prev_test_result, test_result], axis=1)
-
-    # save test_result
-    save_parquet(test_result, "model_evaluation_report - "+model_name, file_path = ARTIFACT_ROOT+"/reports/", index_choice=True)
-    return test_result
-
-@log_lifecycle
-def should_retrain_model(
-    model_path,
-    retrain_flag=0,
-    retrain_all=0
-):
-    return (
-        retrain_all == 1
-        or retrain_flag == 1
-        or not os.path.exists(model_path)
-    )
-
 
 @log_lifecycle
 def save_text_file(file_content, file_name, folder_path):
@@ -439,3 +365,42 @@ from src.config import (
 
 
 
+@log_lifecycle
+def save_joblib(object_to_save, object_name):
+    Path(ARTIFACT_ROOT + "/models").mkdir(
+        parents=True,
+        exist_ok=True
+    )
+    full_file_path = ARTIFACT_ROOT+"/models/"+object_name+".joblib"
+    joblib.dump(
+        object_to_save,
+        full_file_path
+    )
+    upload_file(
+        local_file=full_file_path,
+        bucket_name=BUCKET_NAME,
+        blob_name="models/" + object_name + ".joblib"
+    )
+
+
+@log_lifecycle
+def open_joblib(object_name):
+
+    if use_cloud_artifacts():
+        print("Running Inside Vertex")
+        client = storage.Client()
+        bucket = client.bucket(BUCKET_NAME)
+        blob = bucket.blob(f"models/{object_name}.joblib")
+
+        # Download the joblib file into memory
+        model_bytes = blob.download_as_bytes()
+
+        # Load the model directly from memory
+        return joblib.load(io.BytesIO(model_bytes))
+
+    else:
+        full_file_path = (ARTIFACT_ROOT +"/models/" +object_name +".joblib")
+
+        if not os.path.exists(full_file_path):
+            raise FileNotFoundError(f"{full_file_path} not found")
+        return joblib.load(full_file_path)

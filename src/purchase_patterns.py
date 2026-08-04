@@ -1,4 +1,4 @@
-from src.common_functions import log_lifecycle, save_parquet, save_joblib, update_json_file
+from src.common_functions import log_lifecycle, save_parquet, update_json_file, save_joblib
 import pandas as pd
 
 from src.config import PURCHASE_THRESHOLD, RECOMMENDATION_BUNDLE_CUTOFF, USE_BIGQUERY, CUSTOMER_PERSONA_BUCKETS

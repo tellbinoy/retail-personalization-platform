@@ -16,7 +16,7 @@ from src.report_generator_executive import generate_report
 
 @log_lifecycle
 def run(context=None):
-    from src.gemini_integration import generate_cmo_campaign_brief, generate_campaign_operations_brief, build_gemini_context
+    from src.gemini_integration import generate_cmo_campaign_brief, build_gemini_context
     if context is None:
         context = build_gemini_context()
 

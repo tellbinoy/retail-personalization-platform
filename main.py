@@ -15,25 +15,34 @@ from src.common_functions import log_lifecycle, use_cloud_artifacts, print_runti
 @log_lifecycle
 def main():
     #Uncomment this when moving to PROD
+    #Prechecks when moving to PROD
     print_runtime_context()
     use_cloud_artifacts()
 
+    #component 1
     #What products are bought together in the population
-    #customer_order_history_df, transaction_baskets_df = preprocessing()
-    #associations(transaction_baskets_df)
+    customer_order_history_df, transaction_baskets_df = preprocessing()
 
+    #component 2
+    associations(transaction_baskets_df)
+
+    #component 3A
     #What products are interesting to the customer
-    #purchase_pattern_identification()
+    purchase_pattern_identification()
 
+    #component 3B
     #Discover hidden customer personas
-    #customer_persona_grouping()
+    customer_persona_grouping()
 
+    #component 4
     #Which bundle recommendations are top picks
-    #bundle_recommendations()
+    bundle_recommendations()
 
+    #component 5
     #customer clustering into Personas by purchase patterns
-    #campaign_summary()
+    campaign_summary()
 
+    #component 6
     #Gemini Write up
     gemini_insights()
 
