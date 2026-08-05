@@ -22,9 +22,12 @@ generate_cmo_campaign_brief(
 
 
 @log_lifecycle
-def run():
-    filtered_recommendations_df = open_parquet('customer_recommendations')
-    build_campaign_summary(filtered_recommendations_df)
-    build_department_summary(filtered_recommendations_df)
-    build_cross_department_summary(filtered_recommendations_df)
-    build_recommendation_evidence(filtered_recommendations_df)
+def run(filtered_recommendations_df = None):
+    if len(filtered_recommendations_df) == 0:
+        filtered_recommendations_df = open_parquet('customer_recommendations')
+
+    campaign_summary = build_campaign_summary(filtered_recommendations_df)
+    dept_summary = build_department_summary(filtered_recommendations_df)
+    cross_dept_summary = build_cross_department_summary(filtered_recommendations_df)
+    recommendation_evidence = build_recommendation_evidence(filtered_recommendations_df)
+    return campaign_summary, dept_summary, cross_dept_summary, recommendation_evidence

@@ -5,7 +5,7 @@ from src.purchase_patterns import identify_customer_domains, generate_recommenda
 
 
 @log_lifecycle
-def run():
+def run(recommendation_candidates=None, ranked_recommendations=None, filtered_recommendations=0):
 
     # Vertex AI - Inputs
     # ----------------
@@ -14,12 +14,19 @@ def run():
     # Vertex AI - Outputs
     # ----------------
     # artifacts/data/ranked_recommendations
+    if len(recommendation_candidates) == 0:
+        recommendation_candidates = open_parquet('recommendation_candidates')
 
-    recommendation_candidates = open_parquet('recommendation_candidates')
     rank_recommendations(recommendation_candidates)
-    ranked_recommendations = open_parquet('ranked_recommendations')
-    filter_recommendations(ranked_recommendations)
-    filtered_recommendations = open_parquet('filtered_recommendations')
-    publish_recommendations(filtered_recommendations)
 
+    if len(ranked_recommendations) == 0:
+        ranked_recommendations = open_parquet('ranked_recommendations')
+
+    filter_recommendations(ranked_recommendations)
+
+    if len(filtered_recommendations) == 0:
+        filtered_recommendations = open_parquet('filtered_recommendations')
+
+    recommendation_df = publish_recommendations(filtered_recommendations)
+    return recommendation_df
 

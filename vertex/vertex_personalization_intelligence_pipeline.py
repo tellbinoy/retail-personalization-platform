@@ -103,6 +103,64 @@ def customer_persona_component():
     customer_persona_identification()
 
 
+@dsl.component(base_image="asia-south1-docker.pkg.dev/retailmarketing-123/ml-repo/retail-personalization-platform:latest")
+def bundle_recommendation_component(input_data_folder:Input[Dataset], bundle_recommendation_folder: Output[Dataset]):
+    from pipelines.right_bundles._04_rank_bundle_recommendations import run as bundle_recommendation
+    import pandas as pd
+    from pathlib import Path
+    recommendation_candidates_df = pd.read_parquet(
+        input_data_folder.path + "/recommendation_candidates.parquet"
+    )
+    recommendation_df = bundle_recommendation(recommendation_candidates = recommendation_candidates_df)
+    # create the folder in the dedicated Vertex Bucket space (idempotent)
+    Path(bundle_recommendation_folder.path).mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # save these to output folders
+    bundle_recommendation_folder.to_parquet(
+        bundle_recommendation_folder.path + "/recommendation_df.parquet"
+    )
+
+
+
+@dsl.component(base_image="asia-south1-docker.pkg.dev/retailmarketing-123/ml-repo/retail-personalization-platform:latest")
+def campaign_summarizer_component(input_data_folder:Input[Dataset], campaign_summary_folder: Output[Dataset]):
+    from pipelines.right_bundles._05_campaign_summary_maker import run as campaign_summarizer
+    import pandas as pd
+    from pathlib import Path
+    import json
+    recommendation_candidates_df = pd.read_parquet(
+        input_data_folder.path + "/recommendation_df.parquet"
+    )
+    campaign_summary, dept_summary, cross_dept_summary, recommendation_evidence = campaign_summarizer(filtered_recommendations_df = recommendation_candidates_df)
+
+    # create the folder in the dedicated Vertex Bucket space (idempotent)
+    Path(campaign_summary_folder.path).mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # save these to output folders
+    recommendation_candidates_df.to_parquet(
+        campaign_summary_folder.path + "/recommendation_df.parquet"
+    )
+
+    # Save JSON files
+    with open(campaign_summary_folder.path + "/campaign_summary.json", "w") as f:
+        json.dump(campaign_summary, f, indent=4)
+
+    with open(campaign_summary_folder.path + "/dept_summary.json", "w") as f:
+        json.dump(dept_summary, f, indent=4)
+
+    with open(campaign_summary_folder.path + "/cross_dept_summary.json", "w") as f:
+        json.dump(cross_dept_summary, f, indent=4)
+
+    with open(campaign_summary_folder.path + "/recommendation_evidence.json", "w") as f:
+        json.dump(recommendation_evidence, f, indent=4)
+
+
 #@dsl.pipeline tells this function name is the master plan for the whole workflow
 @dsl.pipeline(
     name="retail-personalization-intelligence-pipeline"
@@ -123,6 +181,12 @@ def personalization_intelligence_pipeline():
     customer_persona_component_task = customer_persona_component()
     customer_persona_component_task.after(association_mining_task)
     customer_persona_component_task.set_caching_options(True)
+
+    bundle_recommendation_task = bundle_recommendation_component(input_data_folder = purchase_pattern_identification_task.outputs["purchase_pattern_folder"])
+    bundle_recommendation_task.set_caching_options(True)
+
+    campaign_summarizer_task = campaign_summarizer_component(input_data_folder = bundle_recommendation_task.outputs["bundle_recommendation_folder"])
+    campaign_summarizer_task.set_caching_options(True)
 
 
 if __name__ == "__main__":
